@@ -1,5 +1,5 @@
 import {PhoneIcon} from 'lucide-react'
-import heroImg from '@/assets/portrait.webp'
+import heroImg from '@/assets/jazirah.png'
 import {Button} from '@/components/ui/button'
 import {Card} from '@/components/ui/card'
 import {EnvelopeSimpleIcon, LinkedinLogoIcon, WhatsappLogoIcon, XLogoIcon} from "@phosphor-icons/react"
