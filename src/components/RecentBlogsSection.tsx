@@ -1,112 +1,131 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowLeft, ArrowRight, Clock } from 'lucide-react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  ArrowUpRight,
+  BrainCircuit,
+  Code2,
+  UsersRound,
+  type LucideIcon,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { MOCK_BLOGS, type BlogCategory, type BlogPostPreview } from '@/data/mockBlogs'
-import { useNavigate } from '@/navigation/RouterContext'
-import { PATHS } from '@/navigation/paths'
+import { BLOGS, type BlogCategory, type BlogPost } from '@/data/blogs'
+import { Link } from '@/navigation/RouterContext'
+import { profile } from '@/data/profile'
 
 type FilterCategory = 'All' | BlogCategory
 
-const CATEGORIES: readonly FilterCategory[] = ['All', 'Architecture', 'Technology']
+const CATEGORIES: readonly FilterCategory[] = ['All', ...new Set(BLOGS.map((blog) => blog.category))]
+const CATEGORY_ICONS: Record<BlogCategory, LucideIcon> = {
+  'Software Development': Code2,
+  'Artificial Intelligence': BrainCircuit,
+  'Personal Reflections': UsersRound,
+}
 
 function formatStepNumber(num: number): string {
   return String(Math.max(1, num)).padStart(2, '0')
 }
 
-function BlogCard({ blog, onRead }: { blog: BlogPostPreview; onRead: () => void }) {
-  return (
-    <Card className="group flex h-full flex-col gap-0 overflow-hidden rounded-xl border-border bg-white p-0 py-0 shadow-2xs transition-shadow hover:shadow-md">
-      <div className="aspect-16/10 w-full overflow-hidden bg-muted">
-        <img
-          src={blog.imageUrl}
-          alt={blog.imageAlt}
-          loading="lazy"
-          width={450}
-          height={280}
-          className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-        />
-      </div>
+function getVisibleCards(): number {
+  if (typeof window === 'undefined') return 3
+  if (window.innerWidth >= 1024) return 3
+  if (window.innerWidth >= 768) return 2
+  return 1
+}
 
-      <div className="flex flex-1 flex-col p-5">
-        <div className="flex items-center justify-between gap-2">
-          <span className="inline-flex items-center rounded-full border border-border bg-card px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+function BlogCard({
+  blog,
+  index,
+}: {
+  blog: BlogPost
+  index: number
+}) {
+  const [imageFailed, setImageFailed] = useState(false)
+  const CategoryIcon = CATEGORY_ICONS[blog.category]
+
+  return (
+    <Link
+      to={blog.path}
+      aria-label={`Read article: ${blog.title}`}
+      className="group block h-full rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-purple"
+    >
+      <Card
+        style={{ animationDelay: `${index * 90}ms` }}
+        className="blog-card-enter flex h-full flex-col gap-0 overflow-hidden rounded-2xl border-border bg-white p-0 py-0 shadow-sm transition-[transform,box-shadow,border-color] duration-300 group-hover:-translate-y-1 group-hover:border-brand-purple/25 group-hover:shadow-card-hover"
+      >
+        <div className="relative aspect-16/10 w-full overflow-hidden bg-brand-purple-soft">
+          {imageFailed ? (
+            <div
+              aria-hidden="true"
+              className="flex size-full items-center justify-center bg-linear-to-br from-brand-purple-soft via-white to-brand-yellow-soft"
+            >
+              <CategoryIcon className="size-12 text-brand-purple" strokeWidth={1.4} />
+            </div>
+          ) : (
+            <img
+              src={blog.imageUrl}
+              alt={blog.imageAlt}
+              loading="lazy"
+              width={900}
+              height={563}
+              onError={() => setImageFailed(true)}
+              className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.035]"
+            />
+          )}
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 bg-linear-to-t from-brand-ink/35 via-transparent to-transparent opacity-70"
+          />
+          <span className="absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-full border border-white/35 bg-brand-ink/65 px-3 py-1.5 text-[10px] font-semibold tracking-wide text-white backdrop-blur-md">
+            <CategoryIcon aria-hidden="true" className="size-3.5" />
             {blog.category}
           </span>
-
-          <span
-            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${
-              blog.isPaid
-                ? 'border-amber-200/80 bg-amber-50 text-amber-800'
-                : 'border-emerald-200/80 bg-emerald-50 text-emerald-700'
-            }`}
-          >
-            {blog.priceLabel}
-          </span>
         </div>
 
-        <div className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          <Clock aria-hidden="true" className="size-3 shrink-0" />
-          <span>
-            {blog.date} &middot; {blog.readTime}
-          </span>
-        </div>
+        <div className="flex flex-1 flex-col p-5 sm:p-6">
+          <p className="text-[10px] font-bold tracking-[0.14em] text-brand-purple uppercase">
+            Journal entry
+          </p>
+          <h3 className="mt-2 font-serif text-xl leading-[1.25] font-semibold tracking-tight text-brand-ink sm:text-[1.35rem]">
+            {blog.title}
+          </h3>
 
-        <h3 className="mt-2 font-serif text-[17px] leading-snug font-semibold tracking-tight text-foreground">
-          {blog.title}
-        </h3>
+          <p className="mt-3 flex-1 text-sm leading-6 text-muted-foreground">
+            {blog.excerpt}
+          </p>
 
-        <p className="mt-2 line-clamp-3 flex-1 text-xs leading-relaxed text-muted-foreground">
-          {blog.excerpt}
-        </p>
-
-        <div className="mt-4 border-t border-border/70 pt-3.5">
-          <Button
-            type="button"
-            variant="link"
-            size="xs"
-            onClick={onRead}
-            className="h-auto gap-1.5 p-0 text-xs font-medium text-primary hover:no-underline"
-          >
-            <span>Read</span>
-            <ArrowRight
+          <div className="mt-5 flex items-center justify-between border-t border-border/80 pt-4 text-sm font-semibold text-brand-purple">
+            <span>Read story</span>
+            <ArrowUpRight
               aria-hidden="true"
-              className="size-3 transition-transform group-hover:translate-x-0.5"
+              className="size-4 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
             />
-          </Button>
+          </div>
         </div>
-      </div>
-    </Card>
+      </Card>
+    </Link>
   )
 }
 
 export function RecentBlogsSection() {
-  const navigate = useNavigate()
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
 
   const [selectedCategory, setSelectedCategory] = useState<FilterCategory>('All')
   const [isSeeAll, setIsSeeAll] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [visibleCards, setVisibleCards] = useState(3)
+  const [visibleCards, setVisibleCards] = useState(getVisibleCards)
 
   const filteredBlogs =
     selectedCategory === 'All'
-      ? MOCK_BLOGS
-      : MOCK_BLOGS.filter((blog) => blog.category === selectedCategory)
+      ? BLOGS
+      : BLOGS.filter((blog) => blog.category === selectedCategory)
 
   const updateVisibleCards = useCallback(() => {
-    if (typeof window === 'undefined') return
-    if (window.innerWidth >= 1024) {
-      setVisibleCards(3)
-    } else if (window.innerWidth >= 768) {
-      setVisibleCards(2)
-    } else {
-      setVisibleCards(1)
-    }
+    setVisibleCards(getVisibleCards())
   }, [])
 
   useEffect(() => {
-    updateVisibleCards()
     window.addEventListener('resize', updateVisibleCards)
     return () => window.removeEventListener('resize', updateVisibleCards)
   }, [updateVisibleCards])
@@ -169,21 +188,21 @@ export function RecentBlogsSection() {
   const canScrollNext = !isSeeAll && clampedIndex < maxStartIndex
 
   return (
-    <section className="border-t border-border py-12 sm:py-16">
+    <section className="border-t border-border py-14 sm:py-20">
       {/* Section Header & Controls */}
       <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="flex items-center gap-2">
             <span
               aria-hidden="true"
-              className="inline-block size-1.5 rounded-full bg-primary"
+              className="inline-block size-2 rounded-full bg-brand-yellow"
             />
-            <span className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
-              The Tech Report Archive
+            <span className="text-[10px] font-bold tracking-[0.14em] text-brand-purple uppercase">
+              {profile.siteName} archive
             </span>
           </div>
-          <h2 className="mt-1.5 font-serif text-2xl font-normal tracking-tight text-foreground sm:text-3xl">
-            Recent Blogs
+          <h2 className="mt-2 font-serif text-3xl font-medium tracking-tight text-brand-ink sm:text-4xl">
+            Stories from my journey
           </h2>
         </div>
 
@@ -192,7 +211,7 @@ export function RecentBlogsSection() {
           <div
             role="group"
             aria-label="Filter blogs by category"
-            className="inline-flex items-center gap-1 rounded-lg border border-border bg-card p-1"
+            className="flex max-w-full flex-wrap items-center gap-1 rounded-2xl border border-border bg-white p-1.5 shadow-sm sm:rounded-full"
           >
             {CATEGORIES.map((category) => {
               const isSelected = selectedCategory === category
@@ -200,14 +219,14 @@ export function RecentBlogsSection() {
                 <Button
                   key={category}
                   type="button"
-                  variant={isSelected ? 'default' : 'ghost'}
+                  variant="ghost"
                   size="xs"
                   onClick={() => handleCategoryChange(category)}
                   aria-pressed={isSelected}
-                  className={`h-7 rounded-md px-3 text-xs font-medium ${
+                  className={`h-8 rounded-full px-3 text-[11px] font-medium sm:px-3.5 sm:text-xs ${
                     isSelected
-                      ? 'bg-primary text-primary-foreground shadow-2xs'
-                      : 'text-muted-foreground hover:bg-background/70 hover:text-foreground'
+                      ? 'bg-brand-purple text-white shadow-sm hover:bg-brand-purple-hover'
+                      : 'text-muted-foreground hover:bg-brand-purple-soft hover:text-brand-purple'
                   }`}
                 >
                   {category}
@@ -223,7 +242,7 @@ export function RecentBlogsSection() {
               variant="outline"
               size="sm"
               onClick={() => setIsSeeAll(true)}
-              className="h-8 bg-white px-3 text-xs font-medium shadow-2xs"
+              className="h-8 rounded-full border-border bg-white px-4 text-xs font-semibold text-brand-purple shadow-sm hover:border-brand-purple hover:bg-brand-purple-soft focus-visible:ring-brand-purple"
             >
               See All
             </Button>
@@ -233,7 +252,7 @@ export function RecentBlogsSection() {
               variant="outline"
               size="sm"
               onClick={() => setIsSeeAll(false)}
-              className="h-8 bg-white px-3 text-xs font-medium shadow-2xs"
+              className="h-8 rounded-full border-border bg-white px-4 text-xs font-semibold text-brand-purple shadow-sm hover:border-brand-purple hover:bg-brand-purple-soft focus-visible:ring-brand-purple"
             >
               See Less
             </Button>
@@ -254,7 +273,7 @@ export function RecentBlogsSection() {
               disabled={!canScrollPrev}
               onClick={() => scrollToStep(clampedIndex - 1)}
               aria-label="Scroll to previous blog"
-              className="size-8 rounded-full border-border bg-white shadow-2xs disabled:opacity-40"
+              className="size-9 rounded-full border-border bg-white text-brand-purple shadow-sm transition-colors hover:border-brand-yellow hover:bg-brand-yellow hover:text-brand-ink focus-visible:ring-brand-purple disabled:opacity-40"
             >
               <ArrowLeft aria-hidden="true" className="size-3.5" />
             </Button>
@@ -266,7 +285,7 @@ export function RecentBlogsSection() {
               disabled={!canScrollNext}
               onClick={() => scrollToStep(clampedIndex + 1)}
               aria-label="Scroll to next blog"
-              className="size-8 rounded-full border-border bg-white shadow-2xs disabled:opacity-40"
+              className="size-9 rounded-full border-border bg-white text-brand-purple shadow-sm transition-colors hover:border-brand-yellow hover:bg-brand-yellow hover:text-brand-ink focus-visible:ring-brand-purple disabled:opacity-40"
             >
               <ArrowRight aria-hidden="true" className="size-3.5" />
             </Button>
@@ -277,11 +296,11 @@ export function RecentBlogsSection() {
       {/* Blogs Display: Horizontal Carousel (when See All is inactive) vs Expanded Grid (when See All is active) */}
       {isSeeAll ? (
         <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredBlogs.map((blog) => (
+          {filteredBlogs.map((blog, index) => (
             <BlogCard
               key={blog.id}
               blog={blog}
-              onRead={() => navigate(PATHS.BLOG_DETAILS)}
+              index={index}
             />
           ))}
         </div>
@@ -289,9 +308,9 @@ export function RecentBlogsSection() {
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
-          className="relative mt-8 flex snap-x snap-mandatory gap-6 overflow-x-auto pb-2 scrollbar-none"
+          className="relative mt-8 flex snap-x snap-mandatory gap-6 overflow-x-auto pb-4 scrollbar-none"
         >
-          {filteredBlogs.map((blog) => (
+          {filteredBlogs.map((blog, index) => (
             <div
               key={blog.id}
               data-carousel-item
@@ -299,7 +318,7 @@ export function RecentBlogsSection() {
             >
               <BlogCard
                 blog={blog}
-                onRead={() => navigate(PATHS.BLOG_DETAILS)}
+                index={index}
               />
             </div>
           ))}
@@ -308,4 +327,3 @@ export function RecentBlogsSection() {
     </section>
   )
 }
-
